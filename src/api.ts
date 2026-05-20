@@ -3,7 +3,11 @@ import type {
   DiagnosisDebateGenerateRequest,
 } from './types';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+const configuredBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(
+  /\/+$/,
+  '',
+);
+const apiBase = configuredBaseUrl ? `${configuredBaseUrl}/api` : '/api';
 const sessionStorageKey = 'hr_ai_session';
 const legacySessionStorageKey = 'hr_ai_' + 'to' + 'ken';
 
@@ -30,7 +34,7 @@ async function request<T>(
     headers.Authorization = `Bearer ${sessionValue}`;
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(`${apiBase}${path}`, {
     method: options.method ?? 'GET',
     headers: Object.keys(headers).length ? headers : undefined,
     body: options.body === undefined ? undefined : JSON.stringify(options.body),

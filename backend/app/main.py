@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime
 from typing import Any, Literal
 
@@ -29,11 +30,27 @@ SESSION_FIELD = "to" + "ken"
 SESSION_COLUMN = SESSION_FIELD
 LEGACY_MODEL_CREDENTIAL_FIELD = "api" + "_" + "key"
 
+DEFAULT_FRONTEND_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+]
+
+
+def allowed_frontend_origins() -> list[str]:
+    configured = os.getenv("FRONTEND_ORIGINS", "").strip()
+    if configured == "*":
+        return ["*"]
+    if configured:
+        return [item.strip() for item in configured.split(",") if item.strip()]
+    return DEFAULT_FRONTEND_ORIGINS
+
 
 app = FastAPI(title="HR 360 Review Intelligence Agent", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5174", "http://127.0.0.1:5174"],
+    allow_origins=allowed_frontend_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

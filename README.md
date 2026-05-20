@@ -51,7 +51,7 @@ Phase 3.4-3.7 已继续升级为完整组织诊断闭环：AI 诊断规则生成
 1. 进入 **HR诊断假设**，填写诊断对象、诊断目的、公司阶段、HR 核心判断、想识别的人才、重点关注问题、风控边界和期望输出。
 2. 点击 **AI 提炼诊断假设**。没有配置模型调用凭证时会返回 fallback mock 假设，至少包含中层目标拆解、AI 转型、跨部门协作和 AI-native 高潜人才四类假设。
 3. HR 编辑 AI 假设后点击 **确认诊断假设**。
-4. 进入 **AI人才模型**，选择已确认诊断假设和模型模板，点击 **AI 生成人才模型**。没有 AI Key 时会返回 mock `AI-native Manager Capability Model`。
+4. 进入 **AI人才模型**，选择已确认诊断假设和模型模板，点击 **AI 生成人才模型**。没有模型调用凭证时会返回 mock `AI-native Manager Capability Model`。
 5. HR 编辑模型名称、说明、维度、低/中/高行为标准、样例题目和权重，保存并确认模型。
 6. 回到 **360评审 Agent / 问卷设计**，在「AI 时代诊断问卷生成」区域选择诊断假设和人才模型，生成评分题、行为观察题、开放反馈题、管理者专项题或 AI 治理题。
 
@@ -59,7 +59,7 @@ Phase 3.4-3.7 已继续升级为完整组织诊断闭环：AI 诊断规则生成
 
 ## Phase 3.4-3.7 使用流程
 
-1. 进入 **诊断规则**，选择项目、已确认诊断假设和人才模型，点击 **AI 生成诊断规则**。无 AI Key 时返回 fallback mock 规则。
+1. 进入 **诊断规则**，选择项目、已确认诊断假设和人才模型，点击 **AI 生成诊断规则**。无模型调用凭证时返回 fallback mock 规则。
 2. 进入 **员工反馈**，管理员可筛选反馈、逐条 AI 总结，也可点击 **AI 反馈主题聚类** 生成 Employee Voice 主题。
 3. 进入 **组织诊断看板**，查看项目完成率、模型维度、360 差异、员工反馈主题、组织风险、高潜人才线索和 AI 转型卡点。
 4. 点击 **生成组织风险**，系统基于诊断假设、人才模型、诊断规则、员工反馈聚类和 360 差异生成风险解释。
@@ -125,19 +125,19 @@ hr-ai-consulting/
 安装后端依赖：
 
 ```bash
-python -m pip install -r hr-ai-consulting/backend/requirements.txt
+python -m pip install -r backend/requirements.txt
 ```
 
 启动后端：
 
 ```bash
-pnpm --dir hr-ai-consulting dev:backend
+pnpm dev:backend
 ```
 
 启动前端：
 
 ```bash
-pnpm --dir hr-ai-consulting dev -- --host 0.0.0.0
+pnpm dev -- --host 0.0.0.0
 ```
 
 前端访问地址：
@@ -151,6 +151,106 @@ API 文档地址：
 ```text
 http://localhost:8008/docs
 ```
+
+## 免费试用部署
+
+### 部署架构
+
+前端使用 Vercel Hobby 部署 React/Vite，后端使用 Render Free Web Service 部署 FastAPI，数据库继续使用 SQLite，仅用于 MVP 演示。
+
+### 1. 部署后端到 Render
+
+1. 登录 Render。
+2. 选择 New Web Service。
+3. 选择 GitHub 仓库 `mia-liu-ai/hr-ai-consulting`。
+4. Root Directory 设置为 `backend`。
+5. Build Command 设置为：
+
+```bash
+pip install -r requirements.txt
+```
+
+6. Start Command 设置为：
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+7. 环境变量：
+
+```text
+FRONTEND_ORIGINS=*
+```
+
+部署完成并拿到前端域名后，更推荐将 `FRONTEND_ORIGINS` 改为你的 Vercel 前端域名；多个域名用英文逗号分隔。
+
+模型调用凭证不要写入代码仓库。免费演示可以不配置，系统会使用 fallback mock；如需真实模型调用，可在后台 AI 配置中填写 modelCredential，也可在部署平台按后端兼容配置提供。模型服务地址和模型名称可按需设置为 `OPENAI_BASE_URL`、`OPENAI_MODEL`。
+
+部署完成后测试：
+
+```text
+https://你的后端地址/
+https://你的后端地址/api/health
+https://你的后端地址/docs
+```
+
+### 2. 部署前端到 Vercel
+
+1. 登录 Vercel。
+2. Import GitHub Project。
+3. 选择 `mia-liu-ai/hr-ai-consulting`。
+4. Framework Preset 选择 Vite。
+5. Install Command 设置为：
+
+```bash
+pnpm install
+```
+
+6. Build Command 设置为：
+
+```bash
+pnpm build
+```
+
+7. Output Directory 设置为：
+
+```text
+dist
+```
+
+8. 环境变量：
+
+```text
+VITE_API_BASE_URL=https://你的Render后端地址
+```
+
+不要在前端写死 Render 或 Vercel 地址。部署完成后，Vercel 前端会通过 `VITE_API_BASE_URL` 请求 Render 后端；本地没有配置时仍使用相对路径 `/api/...` 和 Vite 代理。
+
+### 3. 部署后验收
+
+1. 打开 Vercel 前端链接。
+2. 管理员登录。
+3. 进入 HR诊断假设。
+4. 进入 AI人才模型。
+5. 进入组织诊断看板。
+6. 生成专业诊断辩论。
+7. 进入报告生成。
+8. 员工账号登录。
+9. 确认员工只能看到自己的任务和反馈。
+
+### 4. 免费服务限制
+
+1. Render 免费服务可能休眠，首次访问会变慢。
+2. SQLite 适合 MVP 演示；免费云服务重启、休眠或重新部署后，SQLite 数据可能不稳定或不持久。
+3. 如果要正式给多人长期使用，建议切换 PostgreSQL。
+4. 免费额度有限，不适合大量真实员工长期使用。
+
+### 5. 安全提醒
+
+1. 不要把真实模型调用凭证写入代码。
+2. 不要公开演示登录口令。
+3. 生产环境应启用更严格的账号安全策略。
+4. AI 诊断仅用于组织发展和 HR 决策辅助，不作为自动人事决策依据。
 
 ## API
 

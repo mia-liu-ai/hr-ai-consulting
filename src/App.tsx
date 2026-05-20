@@ -23,7 +23,11 @@ import {
   Users,
 } from 'lucide-react';
 
-import { api } from './api';
+import {
+  api,
+  generateDiagnosisDebate,
+  listDiagnosisDebates,
+} from './api';
 import type {
   AISettings,
   AdminDashboard,
@@ -31,6 +35,8 @@ import type {
   AuditEntry,
   ActionPlan,
   DiagnosisHypothesis,
+  DiagnosisDebate,
+  DiagnosisDebateGenerateRequest,
   DiagnosisReport,
   DiagnosisRule,
   Dimension,
@@ -252,6 +258,28 @@ const reportTypeOptions = [
   'AI 转型成熟度报告',
   '30/60/90 天行动计划',
 ];
+const debateScopeOptions = [
+  '管理者能力',
+  '跨部门协作',
+  'AI转型',
+  '员工反馈',
+  '组织机制',
+  '高潜人才',
+  '组织治理',
+  '综合诊断',
+];
+const debateSourceOptions: Array<{
+  key: keyof DiagnosisDebateGenerateRequest;
+  label: string;
+}> = [
+  { key: 'include_hypotheses', label: 'HR诊断假设' },
+  { key: 'include_talent_model', label: 'AI人才模型' },
+  { key: 'include_review_analytics', label: '360评分' },
+  { key: 'include_diagnosis_rules', label: '诊断规则' },
+  { key: 'include_feedback_clusters', label: '员工反馈聚类' },
+  { key: 'include_organization_risks', label: '组织风险' },
+  { key: 'include_ai_bottlenecks', label: 'AI转型卡点' },
+];
 
 const blankDiagnosis: DiagnosisHypothesis = {
   project_id: null,
@@ -295,6 +323,20 @@ const blankDiagnosisRule: DiagnosisRule = {
   risk_level: 'medium',
   suggested_action: '建议 HR 在反馈面谈中引导被评人对照具体行为案例进行复盘。',
   evidence_sources: ['360评分', '开放反馈'],
+};
+
+const blankDebateForm: DiagnosisDebateGenerateRequest = {
+  topic: '中层管理者 AI 工作流设计能力不足是否是当前组织问题的核心原因？',
+  scope: '综合诊断',
+  include_hypotheses: true,
+  include_talent_model: true,
+  include_review_analytics: true,
+  include_feedback_clusters: true,
+  include_organization_risks: true,
+  include_diagnosis_rules: true,
+  include_ai_bottlenecks: true,
+  constraints:
+    '本模块仅用于组织发展和 HR 决策辅助，不作为自动晋升、淘汰、薪酬或裁员依据。',
 };
 
 function Button({
@@ -511,6 +553,15 @@ export default function App() {
   >([]);
   const [organizationDashboard, setOrganizationDashboard] =
     useState<OrganizationDashboard | null>(null);
+  const [diagnosisDebates, setDiagnosisDebates] = useState<DiagnosisDebate[]>(
+    [],
+  );
+  const [selectedDiagnosisDebateId, setSelectedDiagnosisDebateId] = useState<
+    number | null
+  >(null);
+  const [debateForm, setDebateForm] =
+    useState<DiagnosisDebateGenerateRequest>(blankDebateForm);
+  const [showDebateHistory, setShowDebateHistory] = useState(false);
   const [diagnosisReports, setDiagnosisReports] = useState<DiagnosisReport[]>(
     [],
   );
@@ -621,6 +672,15 @@ export default function App() {
         (report) => report.id === selectedDiagnosisReportId,
       ) ?? null,
     [diagnosisReports, selectedDiagnosisReportId],
+  );
+  const selectedDiagnosisDebate = useMemo(
+    () =>
+      diagnosisDebates.find(
+        (debate) => debate.id === selectedDiagnosisDebateId,
+      ) ??
+      diagnosisDebates[0] ??
+      null,
+    [diagnosisDebates, selectedDiagnosisDebateId],
   );
 
   const heatmap = useMemo(() => {
@@ -957,7 +1017,7 @@ export default function App() {
         setOrganizationDashboard(null);
         return;
       }
-      const [dashboard, clusters, risks] = await Promise.all([
+      const [dashboard, clusters, risks, debates] = await Promise.all([
         api.get<OrganizationDashboard>(
           `/diagnosis/dashboard?project_id=${selectedProject}`,
         ),
@@ -967,10 +1027,13 @@ export default function App() {
         api.get<OrganizationRisk[]>(
           `/diagnosis/risks?project_id=${selectedProject}`,
         ),
+        listDiagnosisDebates(selectedProject),
       ]);
       setOrganizationDashboard(dashboard);
       setFeedbackClusters(clusters);
       setOrganizationRisks(risks);
+      setDiagnosisDebates(debates);
+      setSelectedDiagnosisDebateId((value) => value ?? debates[0]?.id ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载组织诊断看板失败');
     } finally {
@@ -983,16 +1046,20 @@ export default function App() {
     setError('');
     try {
       const query = projectId ? `?project_id=${projectId}` : '';
-      const [hypotheses, models, reportsData, plans] = await Promise.all([
+      const [hypotheses, models, reportsData, plans, debates] =
+        await Promise.all([
         api.get<DiagnosisHypothesis[]>('/diagnosis/hypotheses'),
         api.get<TalentModel[]>('/talent/models'),
         api.get<DiagnosisReport[]>(`/diagnosis/reports${query}`),
         api.get<ActionPlan[]>(`/action-plans${query}`),
+        listDiagnosisDebates(projectId ?? undefined),
       ]);
       setDiagnosisList(hypotheses);
       setTalentModels(models);
       setDiagnosisReports(reportsData);
       setActionPlans(plans);
+      setDiagnosisDebates(debates);
+      setSelectedDiagnosisDebateId((value) => value ?? debates[0]?.id ?? null);
       const selected =
         reportsData.find((report) => report.id === selectedDiagnosisReportId) ??
         reportsData[0];
@@ -2034,6 +2101,58 @@ export default function App() {
       `/admin/feedback${query ? `?${query}` : ''}`,
     );
     setAdminFeedback(feedbackData);
+  }
+
+  function formatDebateSummary(debate: DiagnosisDebate) {
+    return `## 专业诊断辩论摘要
+
+主题：${debate.topic || debate.debate_topic}
+
+共识：${debate.consensus}
+
+分歧：${debate.disagreements}
+
+推荐诊断：${debate.recommended_diagnosis}
+
+建议行动：
+${debate.suggested_actions.map((action) => `- ${action}`).join('\n') || '- 暂无'}
+
+风控提示：${debate.risk_notice}`;
+  }
+
+  async function handleGenerateDiagnosisDebate() {
+    const selectedProject = projectId ?? projects[0]?.id;
+    if (!selectedProject) return;
+    setBusy(true);
+    setError('');
+    try {
+      const debate = await generateDiagnosisDebate({
+        ...debateForm,
+        project_id: selectedProject,
+      });
+      const debates = await listDiagnosisDebates(selectedProject);
+      setDiagnosisDebates(debates);
+      setSelectedDiagnosisDebateId(debate.id ?? debates[0]?.id ?? null);
+      setNotice(
+        debate.used_fallback
+          ? '当前证据不足，已生成 fallback 专业诊断辩论'
+          : '专业诊断辩论已生成',
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '生成专业诊断辩论失败');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function handleAppendDebateToReport() {
+    if (!selectedDiagnosisDebate) return;
+    const summary = formatDebateSummary(selectedDiagnosisDebate);
+    setDiagnosisReportDraft((draft) =>
+      draft ? `${draft}\n\n${summary}` : summary,
+    );
+    setNotice('已将专业诊断辩论摘要加入报告草稿，可在报告生成页继续编辑保存。');
+    setActiveModule('diagnosisReports');
   }
 
   async function handleGenerateOrganizationRisks() {
@@ -4155,6 +4274,304 @@ export default function App() {
     );
   }
 
+  function renderDiagnosisDebatePanel() {
+    const debate = selectedDiagnosisDebate;
+    return (
+      <Panel
+        title="专业诊断辩论室"
+        eyebrow="Diagnosis Debate Panel"
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setShowDebateHistory((value) => !value)}
+            >
+              查看历史辩论
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (debate) setNotice('当前辩论结果已保存。');
+              }}
+              disabled={!debate}
+            >
+              保存辩论结果
+            </Button>
+            <Button onClick={handleGenerateDiagnosisDebate} disabled={busy}>
+              <Sparkles size={16} />
+              AI 生成专业诊断辩论
+            </Button>
+          </>
+        }
+      >
+        <div className="grid gap-5">
+          <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm leading-6 text-sky-950">
+            系统将基于诊断假设、360 评分、AI 时代人才模型、员工反馈聚类、组织风险和诊断规则，模拟多个专业流派对同一组织问题进行交叉审议，帮助 HR 避免单一归因，形成更稳妥的组织诊断结论。
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="grid gap-3">
+              <Field label="辩论主题">
+                <textarea
+                  className={textareaClass}
+                  value={debateForm.topic}
+                  onChange={(event) =>
+                    setDebateForm({ ...debateForm, topic: event.target.value })
+                  }
+                />
+              </Field>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Field label="项目">
+                  <select
+                    className={inputClass}
+                    value={projectId ?? ''}
+                    onChange={(event) =>
+                      setProjectId(
+                        event.target.value ? Number(event.target.value) : null,
+                      )
+                    }
+                  >
+                    <option value="">请选择项目</option>
+                    {projects.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="分析范围">
+                  <select
+                    className={inputClass}
+                    value={debateForm.scope}
+                    onChange={(event) =>
+                      setDebateForm({ ...debateForm, scope: event.target.value })
+                    }
+                  >
+                    {debateScopeOptions.map((scope) => (
+                      <option key={scope} value={scope}>
+                        {scope}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+              <Field label="风控边界">
+                <textarea
+                  className={textareaClass}
+                  value={debateForm.constraints}
+                  onChange={(event) =>
+                    setDebateForm({
+                      ...debateForm,
+                      constraints: event.target.value,
+                    })
+                  }
+                />
+              </Field>
+            </div>
+
+            <div className="grid content-start gap-3 rounded-lg border border-slate-200 bg-white p-4">
+              <p className="text-sm font-bold text-slate-950">纳入数据源</p>
+              {debateSourceOptions.map((source) => (
+                <label
+                  key={source.label}
+                  className="flex items-center gap-2 text-sm font-semibold text-slate-700"
+                >
+                  <input
+                    type="checkbox"
+                    checked={Boolean(debateForm[source.key])}
+                    onChange={(event) =>
+                      setDebateForm({
+                        ...debateForm,
+                        [source.key]: event.target.checked,
+                      })
+                    }
+                  />
+                  {source.label}
+                </label>
+              ))}
+              <Button
+                variant="secondary"
+                onClick={handleGenerateDiagnosisDebate}
+                disabled={busy}
+              >
+                重新生成
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleAppendDebateToReport}
+                disabled={!debate}
+              >
+                添加到组织诊断报告
+              </Button>
+            </div>
+          </div>
+
+          {!dashboardHasEnoughSignals() && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900">
+              当前数据仍不足，系统将先基于专业框架生成初步诊断辩论，建议后续补充更多 360 评分、员工反馈和组织风险数据。
+            </div>
+          )}
+
+          {showDebateHistory && (
+            <div className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              {diagnosisDebates.length ? (
+                diagnosisDebates.map((item) => (
+                  <button
+                    key={item.id}
+                    className={`rounded-lg border p-3 text-left text-sm ${item.id === selectedDiagnosisDebateId ? 'border-sky-300 bg-sky-50' : 'border-slate-200 bg-white hover:bg-slate-50'}`}
+                    onClick={() => setSelectedDiagnosisDebateId(item.id ?? null)}
+                  >
+                    <p className="font-bold text-slate-950">
+                      {item.topic || item.debate_topic}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {item.scope || '综合诊断'} · {item.confidence_level} ·{' '}
+                      {item.created_at || ''}
+                    </p>
+                  </button>
+                ))
+              ) : (
+                <EmptyState
+                  title="暂无历史辩论"
+                  body="生成后会在这里保留专业诊断辩论记录。"
+                />
+              )}
+            </div>
+          )}
+
+          {debate ? (
+            <div className="grid gap-5">
+              <div className="rounded-lg border border-slate-200 bg-white p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold text-slate-500">辩论主题</p>
+                    <h3 className="mt-1 text-lg font-black text-slate-950">
+                      {debate.topic || debate.debate_topic}
+                    </h3>
+                  </div>
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-bold ${debate.confidence_level === 'high' ? 'bg-emerald-100 text-emerald-800' : debate.confidence_level === 'low' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'}`}
+                  >
+                    置信度：{debate.confidence_level}
+                  </span>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  {debate.context_summary}
+                </p>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                {debate.perspectives.map((perspective) => (
+                  <div
+                    key={perspective.school}
+                    className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4"
+                  >
+                    <h4 className="text-base font-black text-slate-950">
+                      {perspective.school}
+                    </h4>
+                    <p className="text-sm leading-6 text-slate-700">
+                      {perspective.position}
+                    </p>
+                    <div>
+                      <p className="text-xs font-bold text-slate-500">
+                        支持证据
+                      </p>
+                      <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-600">
+                        {perspective.supporting_evidence.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-500">
+                        反驳观点
+                      </p>
+                      <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-600">
+                        {perspective.counterpoints.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-500">
+                        还需要补充的证据
+                      </p>
+                      <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-600">
+                        {perspective.evidence_needed.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                  <p className="text-xs font-bold text-emerald-700">共识结论</p>
+                  <p className="mt-2 text-sm leading-6 text-emerald-950">
+                    {debate.consensus}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-xs font-bold text-amber-700">分歧点</p>
+                  <p className="mt-2 text-sm leading-6 text-amber-950">
+                    {debate.disagreements}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-3">
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <p className="text-xs font-bold text-slate-500">推荐诊断</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">
+                    {debate.recommended_diagnosis}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <p className="text-xs font-bold text-slate-500">
+                    下一步证据
+                  </p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-700">
+                    {debate.next_evidence_to_collect.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <p className="text-xs font-bold text-slate-500">建议行动</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-700">
+                    {debate.suggested_actions.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900">
+                {debate.risk_notice}
+              </div>
+            </div>
+          ) : (
+            <EmptyState
+              title="尚未生成专业诊断辩论"
+              body="输入诊断主题后点击 AI 生成专业诊断辩论。无模型调用凭证时会使用 fallback mock，仍可演示多专业视角审议。"
+            />
+          )}
+        </div>
+      </Panel>
+    );
+  }
+
+  function dashboardHasEnoughSignals() {
+    return Boolean(
+      organizationDashboard?.score_differences.group_differences.length ||
+        feedbackClusters.length ||
+        organizationRisks.length ||
+        diagnosisRules.length,
+    );
+  }
+
   function renderOrganizationDashboardPage() {
     if (!currentUser || currentUser.role !== 'admin') return renderLoginPage();
     const dashboard = organizationDashboard;
@@ -4387,6 +4804,8 @@ export default function App() {
                   </div>
                 </Panel>
               </div>
+
+              {renderDiagnosisDebatePanel()}
             </>
           ) : (
             <EmptyState
@@ -4423,6 +4842,42 @@ export default function App() {
               本报告仅用于发展反馈和组织诊断，不作为自动晋升、淘汰、薪酬或裁员决策依据。所有结论需要
               HR 结合业务事实进行人工确认。
             </div>
+          </Panel>
+
+          <Panel title="专业诊断辩论摘要">
+            {selectedDiagnosisDebate ? (
+              <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-black text-slate-950">
+                    {selectedDiagnosisDebate.topic ||
+                      selectedDiagnosisDebate.debate_topic}
+                  </p>
+                  <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-bold text-sky-800">
+                    {selectedDiagnosisDebate.confidence_level}
+                  </span>
+                </div>
+                <p className="text-sm leading-6 text-slate-600">
+                  共识：{selectedDiagnosisDebate.consensus}
+                </p>
+                <p className="text-sm leading-6 text-slate-600">
+                  分歧：{selectedDiagnosisDebate.disagreements}
+                </p>
+                <p className="text-sm font-semibold leading-6 text-slate-800">
+                  推荐诊断：{selectedDiagnosisDebate.recommended_diagnosis}
+                </p>
+                <Button
+                  variant="secondary"
+                  onClick={handleAppendDebateToReport}
+                >
+                  加入当前报告草稿
+                </Button>
+              </div>
+            ) : (
+              <EmptyState
+                title="暂无专业诊断辩论结果"
+                body="可先在组织诊断看板中生成，报告页会引用最近一次辩论的推荐诊断、共识、分歧和建议行动。"
+              />
+            )}
           </Panel>
 
           <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">

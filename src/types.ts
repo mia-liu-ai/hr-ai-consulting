@@ -389,6 +389,48 @@ export type OrganizationDashboard = {
   empty_state: string;
 };
 
+export interface DiagnosisDebatePerspective {
+  school: string;
+  position: string;
+  supporting_evidence: string[];
+  counterpoints: string[];
+  evidence_needed: string[];
+}
+
+export interface DiagnosisDebate {
+  id?: number;
+  project_id?: number;
+  topic: string;
+  debate_topic?: string;
+  scope?: string;
+  context_summary: string;
+  perspectives: DiagnosisDebatePerspective[];
+  consensus: string;
+  disagreements: string;
+  recommended_diagnosis: string;
+  confidence_level: 'low' | 'medium' | 'high';
+  next_evidence_to_collect: string[];
+  suggested_actions: string[];
+  risk_notice: string;
+  created_at?: string;
+  updated_at?: string;
+  used_fallback?: boolean;
+}
+
+export interface DiagnosisDebateGenerateRequest {
+  project_id?: number;
+  topic: string;
+  scope?: string;
+  include_hypotheses: boolean;
+  include_talent_model: boolean;
+  include_review_analytics: boolean;
+  include_feedback_clusters: boolean;
+  include_organization_risks: boolean;
+  include_diagnosis_rules: boolean;
+  include_ai_bottlenecks?: boolean;
+  constraints?: string;
+}
+
 export type DiagnosisReport = {
   id: number;
   project_id: number;

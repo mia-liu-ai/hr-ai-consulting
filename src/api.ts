@@ -1,3 +1,8 @@
+import type {
+  DiagnosisDebate,
+  DiagnosisDebateGenerateRequest,
+} from './types';
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 const sessionStorageKey = 'hr_ai_session';
 const legacySessionStorageKey = 'hr_ai_' + 'to' + 'ken';
@@ -57,3 +62,18 @@ export const api = {
     request<T>(path, { method: 'PUT', body }),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 };
+
+export function generateDiagnosisDebate(
+  payload: DiagnosisDebateGenerateRequest,
+) {
+  return api.post<DiagnosisDebate>('/diagnosis/debates/generate', payload);
+}
+
+export function listDiagnosisDebates(projectId?: number) {
+  const query = projectId ? `?project_id=${projectId}` : '';
+  return api.get<DiagnosisDebate[]>(`/diagnosis/debates${query}`);
+}
+
+export function getDiagnosisDebate(id: number) {
+  return api.get<DiagnosisDebate>(`/diagnosis/debates/${id}`);
+}

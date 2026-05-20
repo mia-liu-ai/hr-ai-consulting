@@ -269,6 +269,20 @@ class OrganizationRiskUpdatePayload(BaseModel):
     status: str | None = None
 
 
+class DiagnosisDebateGeneratePayload(BaseModel):
+    project_id: int | None = None
+    topic: str = "中层管理者 AI 工作流设计能力不足是否是当前组织问题的核心原因？"
+    scope: str = "综合诊断"
+    include_hypotheses: bool = True
+    include_talent_model: bool = True
+    include_review_analytics: bool = True
+    include_feedback_clusters: bool = True
+    include_organization_risks: bool = True
+    include_diagnosis_rules: bool = True
+    include_ai_bottlenecks: bool = True
+    constraints: str = "本模块仅用于组织发展和 HR 决策辅助，不作为自动晋升、淘汰、薪酬或裁员依据。"
+
+
 class DiagnosisReportGeneratePayload(BaseModel):
     project_id: int
     hypothesis_id: int | None = None
@@ -1549,6 +1563,160 @@ def normalize_organization_risks(value: Any) -> list[dict[str, Any]]:
     return risks
 
 
+def fallback_diagnosis_debate(topic: str, scope: str = "综合诊断") -> dict[str, Any]:
+    debate_topic = topic.strip() or "中层管理者 AI 工作流设计能力不足是否是当前组织问题的核心原因？"
+    perspectives = [
+        {
+            "school": "OD 组织发展视角",
+            "position": "该问题不应简单归因为中层个人能力不足，更可能与组织角色边界、决策机制和跨部门协作流程有关。",
+            "supporting_evidence": ["员工反馈中出现审批慢、决策不清、信息同步不足。"],
+            "counterpoints": ["如果部分管理者下级评分持续偏低，仍需关注管理者个人能力。"],
+            "evidence_needed": ["跨部门项目责任分工", "关键项目复盘记录"],
+        },
+        {
+            "school": "人才发展视角",
+            "position": "部分中层确实可能缺少 AI 时代目标拆解、人机协作、团队学习扩散能力。",
+            "supporting_evidence": ["AI 人才模型中问题定义能力、AI 工作流设计能力相关题项偏弱。"],
+            "counterpoints": ["能力不足可能来自公司缺少统一训练和示范，而非个体潜力不足。"],
+            "evidence_needed": ["管理者是否接受过 AI 工作流训练", "管理者真实项目中的任务拆解案例"],
+        },
+        {
+            "school": "工业与组织心理学视角",
+            "position": "员工体验信号可能反映心理安全感、反馈质量和公平感不足，需要避免只看流程表象。",
+            "supporting_evidence": ["员工反馈中出现目标变化、沟通不充分和反馈闭环不足。"],
+            "counterpoints": ["如果反馈集中在少数团队，不能直接推断为全组织氛围问题。"],
+            "evidence_needed": ["员工体验访谈", "不同部门反馈分布", "反馈闭环周期"],
+        },
+        {
+            "school": "系统思维视角",
+            "position": "目标频繁变化可能来自上游战略输入不稳定，不应完全归因给中层执行。",
+            "supporting_evidence": ["员工反馈中出现优先级频繁变化和临时任务较多。"],
+            "counterpoints": ["中层仍需要具备把变化转化为清晰任务的能力。"],
+            "evidence_needed": ["目标调整频率", "业务负责人决策记录", "跨团队依赖链路"],
+        },
+        {
+            "school": "People Analytics 数据视角",
+            "position": "当前信号可以作为风险提示，但还不足以直接得出强结论。",
+            "supporting_evidence": ["多来源数据方向一致，但样本量、部门分布、评价关系差异需要进一步确认。"],
+            "counterpoints": ["如果多个评价关系均显示同一问题，诊断可信度会提升。"],
+            "evidence_needed": ["样本量", "评分方分布", "部门分布", "开放反馈重复率"],
+        },
+        {
+            "school": "AI 转型与人机协作视角",
+            "position": "问题可能不是 AI 工具不足，而是 AI 没有进入团队工作流和管理机制。",
+            "supporting_evidence": ["反馈中提到 AI 使用规范缺失，管理者只要求提效但没有重构流程。"],
+            "counterpoints": ["如果公司没有统一 AI 政策和工具支持，不能只要求管理者独立解决。"],
+            "evidence_needed": ["AI 工具使用规范", "团队 AI 工作流案例", "管理者 AI 应用培训记录"],
+        },
+        {
+            "school": "组织治理与风控视角",
+            "position": "诊断结论需要保留匿名保护、人工复核和用途边界，不能被误用为自动人事决策。",
+            "supporting_evidence": ["360 和员工声音都包含敏感评价，应避免公开单个评价人的原始内容。"],
+            "counterpoints": ["过度保守也可能导致 HR 不行动，因此需要用可验证行动替代自动化结论。"],
+            "evidence_needed": ["匿名群体人数", "报告确认记录", "AI 使用边界说明"],
+        },
+    ]
+    return {
+        "debate_topic": debate_topic,
+        "topic": debate_topic,
+        "scope": scope,
+        "context_summary": "当前系统发现，部分管理者在问题定义能力、AI 工作流设计能力、跨部门协作方面存在较弱信号，同时员工反馈中出现目标变化频繁、审批慢、AI 使用规范缺失等主题。当前证据不足，需要补充更多 360 评分、员工反馈和组织风险数据。",
+        "perspectives": perspectives,
+        "consensus": "当前问题更可能是组织机制、管理者能力和 AI 工作流缺失共同作用，而不是单一执行力问题。",
+        "disagreements": "OD 视角更强调机制问题，人才发展视角更强调管理者能力，AI 转型视角更强调流程重构不足，数据视角提醒当前证据仍需补充。",
+        "recommended_diagnosis": "中层管理者 AI-native 管理能力与组织协作机制共同不足。",
+        "confidence_level": "medium",
+        "next_evidence_to_collect": ["补充跨部门项目 RACI 数据", "查看下级开放反馈", "调查 AI 工作流设计经验", "复盘近期目标变化频率"],
+        "suggested_actions": ["开展中层 AI 工作流设计工作坊", "建立跨部门 RACI 机制", "制定 AI 使用边界和人工复核规范", "在 30 天内选择一个团队做试点"],
+        "risk_notice": "该诊断仅用于组织发展和管理改进，不作为自动晋升、淘汰、薪酬或裁员依据。所有结论需要 HR 人工复核。",
+    }
+
+
+def normalize_diagnosis_debate(value: Any, topic: str, scope: str) -> dict[str, Any]:
+    raw = value.get("debate", value) if isinstance(value, dict) else {}
+    if not isinstance(raw, dict):
+        return {}
+    perspectives = []
+    for item in raw.get("perspectives", []):
+        if not isinstance(item, dict) or not item.get("school"):
+            continue
+        perspectives.append(
+            {
+                "school": str(item.get("school", "")).strip(),
+                "position": str(item.get("position", "")).strip(),
+                "supporting_evidence": item.get("supporting_evidence", []) if isinstance(item.get("supporting_evidence", []), list) else [],
+                "counterpoints": item.get("counterpoints", []) if isinstance(item.get("counterpoints", []), list) else [],
+                "evidence_needed": item.get("evidence_needed", []) if isinstance(item.get("evidence_needed", []), list) else [],
+            }
+        )
+    if len(perspectives) < 5:
+        return {}
+    confidence = str(raw.get("confidence_level", "medium")).strip() or "medium"
+    if confidence not in {"low", "medium", "high"}:
+        confidence = "medium"
+    return {
+        "debate_topic": str(raw.get("debate_topic", raw.get("topic", topic))).strip() or topic,
+        "scope": str(raw.get("scope", scope)).strip() or scope,
+        "context_summary": str(raw.get("context_summary", "")).strip(),
+        "perspectives": perspectives,
+        "consensus": str(raw.get("consensus", "")).strip(),
+        "disagreements": str(raw.get("disagreements", "")).strip(),
+        "recommended_diagnosis": str(raw.get("recommended_diagnosis", "")).strip(),
+        "confidence_level": confidence,
+        "next_evidence_to_collect": raw.get("next_evidence_to_collect", []) if isinstance(raw.get("next_evidence_to_collect", []), list) else [],
+        "suggested_actions": raw.get("suggested_actions", []) if isinstance(raw.get("suggested_actions", []), list) else [],
+        "risk_notice": str(raw.get("risk_notice", "")).strip(),
+    }
+
+
+def serialize_diagnosis_debate(row: Any) -> dict[str, Any]:
+    item = as_dict(row)
+    item["perspectives"] = loads_json(item.pop("perspectives_json", None), [])
+    item["next_evidence_to_collect"] = loads_json(item.get("next_evidence_to_collect"), [])
+    item["suggested_actions"] = loads_json(item.get("suggested_actions"), [])
+    item["debate_topic"] = item.get("topic", "")
+    return item
+
+
+def build_debate_context(conn: Any, project_id: int, payload: DiagnosisDebateGeneratePayload) -> dict[str, Any]:
+    context: dict[str, Any] = {"project_id": project_id, "scope": payload.scope}
+    if payload.include_review_analytics:
+        context["analytics"] = build_analytics(conn, project_id)
+    if payload.include_hypotheses:
+        rows = conn.execute(
+            "SELECT * FROM diagnosis_hypotheses WHERE project_id IS NULL OR project_id = ? ORDER BY updated_at DESC, id DESC LIMIT 5",
+            (project_id,),
+        ).fetchall()
+        context["diagnosis_hypotheses"] = [serialize_diagnosis(row) for row in rows]
+    if payload.include_talent_model:
+        rows = conn.execute(
+            "SELECT * FROM talent_models WHERE project_id IS NULL OR project_id = ? ORDER BY updated_at DESC, id DESC LIMIT 3",
+            (project_id,),
+        ).fetchall()
+        context["talent_models"] = [serialize_talent_model(conn, row) for row in rows]
+    if payload.include_diagnosis_rules:
+        rows = conn.execute(
+            "SELECT * FROM diagnosis_rules WHERE project_id IS NULL OR project_id = ? ORDER BY updated_at DESC, id DESC LIMIT 10",
+            (project_id,),
+        ).fetchall()
+        context["diagnosis_rules"] = [serialize_diagnosis_rule(row) for row in rows]
+    if payload.include_feedback_clusters:
+        rows = conn.execute(
+            "SELECT * FROM feedback_clusters WHERE project_id IS NULL OR project_id = ? ORDER BY evidence_count DESC, id DESC LIMIT 10",
+            (project_id,),
+        ).fetchall()
+        context["feedback_clusters"] = [serialize_feedback_cluster(row) for row in rows]
+    if payload.include_organization_risks:
+        rows = conn.execute(
+            "SELECT * FROM organization_risks WHERE project_id = ? ORDER BY updated_at DESC, id DESC LIMIT 10",
+            (project_id,),
+        ).fetchall()
+        context["organization_risks"] = [serialize_organization_risk(row) for row in rows]
+    if payload.include_ai_bottlenecks:
+        context["ai_transformation_bottlenecks"] = build_organization_dashboard(conn, project_id).get("ai_transformation_bottlenecks", [])
+    return context
+
+
 def fallback_action_plans(project_id: int, report_id: int | None = None) -> list[dict[str, Any]]:
     return [
         {"project_id": project_id, "report_id": report_id, "target_type": "organization", "title": "快速澄清问题与召开关键反馈会", "description": "围绕低分维度、员工声音主题和组织风险进行 1-2 场关键反馈会，确认哪些是能力问题、流程问题或管理机制问题。", "timeline": "30天", "status": "pending", "ai_generated": True},
@@ -1597,7 +1765,20 @@ def build_diagnosis_context(conn: Any, project_id: int, hypothesis_id: int | Non
     rules = [serialize_diagnosis_rule(row) for row in conn.execute("SELECT * FROM diagnosis_rules WHERE project_id IS NULL OR project_id = ? ORDER BY risk_level DESC, id DESC LIMIT 20", (project_id,)).fetchall()]
     clusters = [serialize_feedback_cluster(row) for row in conn.execute("SELECT * FROM feedback_clusters WHERE project_id IS NULL OR project_id = ? ORDER BY evidence_count DESC, id DESC LIMIT 20", (project_id,)).fetchall()]
     risks = [serialize_organization_risk(row) for row in conn.execute("SELECT * FROM organization_risks WHERE project_id = ? ORDER BY risk_level DESC, id DESC LIMIT 20", (project_id,)).fetchall()]
-    return {"analytics": analytics, "hypothesis": hypothesis, "model": model, "diagnosis_rules": rules, "feedback_clusters": clusters, "organization_risks": risks}
+    debate_row = conn.execute(
+        "SELECT * FROM diagnosis_debates WHERE project_id = ? ORDER BY created_at DESC, id DESC LIMIT 1",
+        (project_id,),
+    ).fetchone()
+    latest_debate = serialize_diagnosis_debate(debate_row) if debate_row else None
+    return {
+        "analytics": analytics,
+        "hypothesis": hypothesis,
+        "model": model,
+        "diagnosis_rules": rules,
+        "feedback_clusters": clusters,
+        "organization_risks": risks,
+        "latest_debate": latest_debate,
+    }
 
 
 def fallback_diagnosis_report(context: dict[str, Any], report_type: str, include_action_plan: bool) -> str:
@@ -1609,6 +1790,12 @@ def fallback_diagnosis_report(context: dict[str, Any], report_type: str, include
     low_text = "、".join([f"{row['name']}({row['avg_score']})" for row in low_dimensions]) or "暂无足够评分数据"
     risk_text = "、".join([risk["title"] for risk in context.get("organization_risks", [])[:3]]) or "暂无已生成组织风险"
     cluster_text = "、".join([cluster["theme"] for cluster in context.get("feedback_clusters", [])[:3]]) or "暂无反馈聚类"
+    debate = context.get("latest_debate")
+    debate_text = (
+        f"最近一次专业诊断辩论建议：{debate.get('recommended_diagnosis', '')}；共识：{debate.get('consensus', '')}"
+        if debate
+        else "暂无专业诊断辩论结果，可先在组织诊断看板中生成。"
+    )
     action_section = """
 ## 30/60/90 天行动计划
 ### 30 天
@@ -1637,6 +1824,7 @@ def fallback_diagnosis_report(context: dict[str, Any], report_type: str, include
 - 低分或待关注维度：{low_text}
 - 员工反馈交叉验证主题：{cluster_text}
 - 组织风险：{risk_text}
+- 专业诊断辩论摘要：{debate_text}
 
 ## 评分差异分析
 系统已检查自评与他评、上级与下级、同级与协作方差异。若差异较大，建议 HR 回到具体行为证据，而不是直接下结论。
@@ -3722,6 +3910,94 @@ def update_organization_risk(
         after = fetch_one_or_404(conn, "SELECT * FROM organization_risks WHERE id = ?", (risk_id,), "organization risk")
         record_edit(conn, after.get("project_id"), None, "organization_risk", risk_id, serialize_organization_risk(before), serialize_organization_risk(after))
         return serialize_organization_risk(after)
+
+
+@app.post("/api/diagnosis/debates/generate")
+def generate_diagnosis_debate(
+    payload: DiagnosisDebateGeneratePayload,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    user = require_admin_user(authorization)
+    with get_connection() as conn:
+        project_id = ensure_project_id(conn, payload.project_id)
+        context = build_debate_context(conn, project_id, payload)
+    system = "你是资深组织诊断审议主持人，请模拟多个专业流派交叉审议，只输出可解析 JSON。"
+    prompt = f"""
+请围绕以下诊断主题生成专业诊断辩论。输出 JSON：
+{{"debate_topic":"","context_summary":"","perspectives":[{{"school":"","position":"","supporting_evidence":[],"counterpoints":[],"evidence_needed":[]}}],"consensus":"","disagreements":"","recommended_diagnosis":"","confidence_level":"medium","next_evidence_to_collect":[],"suggested_actions":[],"risk_notice":""}}
+
+必须包含这些专业视角：OD 组织发展视角、人才发展视角、工业与组织心理学视角、系统思维视角、People Analytics 数据视角、AI 转型与人机协作视角、组织治理与风控视角。
+每个视角都需要 position、supporting_evidence、counterpoints、evidence_needed。
+不要输出自动晋升、淘汰、薪酬或裁员建议；所有结论都要强调 HR 人工复核。
+
+诊断主题：{payload.topic}
+分析范围：{payload.scope}
+风控边界：{payload.constraints}
+上下文：
+{dumps(context)}
+"""
+    ai_text, used_fallback, error = chat_completion(system, prompt)
+    parsed = extract_json(ai_text) if ai_text else None
+    debate = normalize_diagnosis_debate(parsed, payload.topic, payload.scope) if parsed is not None else {}
+    if not debate:
+        debate = fallback_diagnosis_debate(payload.topic, payload.scope)
+        used_fallback = True
+        ai_text = dumps({"debate": debate, "fallback_reason": error or "AI output could not be parsed."})
+    with get_connection() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO diagnosis_debates
+                (project_id, topic, scope, context_summary, perspectives_json, consensus,
+                 disagreements, recommended_diagnosis, confidence_level, next_evidence_to_collect,
+                 suggested_actions, risk_notice, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                project_id,
+                debate.get("debate_topic") or debate.get("topic") or payload.topic,
+                debate.get("scope") or payload.scope,
+                debate.get("context_summary", ""),
+                dumps(debate.get("perspectives", [])),
+                debate.get("consensus", ""),
+                debate.get("disagreements", ""),
+                debate.get("recommended_diagnosis", ""),
+                debate.get("confidence_level", "medium"),
+                dumps(debate.get("next_evidence_to_collect", [])),
+                dumps(debate.get("suggested_actions", [])),
+                debate.get("risk_notice", payload.constraints),
+                user["id"],
+            ),
+        )
+        debate_id = int(cur.lastrowid)
+        run_id = record_ai_run(conn, project_id, None, "generate_diagnosis_debate", prompt, {"payload": payload.model_dump(), "context": context}, ai_text or dumps({"debate": debate}), used_fallback, created_by=user["id"])
+        saved = serialize_diagnosis_debate(fetch_one_or_404(conn, "SELECT * FROM diagnosis_debates WHERE id = ?", (debate_id,), "diagnosis debate"))
+        saved["ai_run_id"] = run_id
+        saved["used_fallback"] = used_fallback
+        return saved
+
+
+@app.get("/api/diagnosis/debates")
+def list_diagnosis_debates(
+    project_id: int | None = None,
+    authorization: str | None = Header(default=None),
+) -> list[dict[str, Any]]:
+    require_admin_user(authorization)
+    with get_connection() as conn:
+        if project_id:
+            rows = conn.execute(
+                "SELECT * FROM diagnosis_debates WHERE project_id = ? ORDER BY created_at DESC, id DESC",
+                (project_id,),
+            ).fetchall()
+        else:
+            rows = conn.execute("SELECT * FROM diagnosis_debates ORDER BY created_at DESC, id DESC").fetchall()
+        return [serialize_diagnosis_debate(row) for row in rows]
+
+
+@app.get("/api/diagnosis/debates/{id}")
+def get_diagnosis_debate(id: int, authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    require_admin_user(authorization)
+    with get_connection() as conn:
+        return serialize_diagnosis_debate(fetch_one_or_404(conn, "SELECT * FROM diagnosis_debates WHERE id = ?", (id,), "diagnosis debate"))
 
 
 @app.post("/api/diagnosis/reports/generate")

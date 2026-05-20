@@ -294,6 +294,25 @@ def init_db() -> None:
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
 
+            CREATE TABLE IF NOT EXISTS diagnosis_debates (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id INTEGER,
+                topic TEXT NOT NULL,
+                scope TEXT,
+                context_summary TEXT,
+                perspectives_json TEXT,
+                consensus TEXT,
+                disagreements TEXT,
+                recommended_diagnosis TEXT,
+                confidence_level TEXT DEFAULT 'medium',
+                next_evidence_to_collect TEXT,
+                suggested_actions TEXT,
+                risk_notice TEXT,
+                created_by INTEGER,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+
             CREATE TABLE IF NOT EXISTS responses (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -383,6 +402,7 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_organization_risks_project ON organization_risks(project_id, status, risk_level);
             CREATE INDEX IF NOT EXISTS idx_diagnosis_reports_project ON diagnosis_reports(project_id, report_type, status);
             CREATE INDEX IF NOT EXISTS idx_action_plans_project ON action_plans(project_id, timeline, status);
+            CREATE INDEX IF NOT EXISTS idx_diagnosis_debates_project ON diagnosis_debates(project_id, created_at);
             """
         )
 

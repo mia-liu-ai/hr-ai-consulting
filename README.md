@@ -8,6 +8,8 @@ Phase 3.1-3.3 已加入 Agentic HR 主线：HR 先输入组织诊断假设，AI 
 
 Phase 3.4-3.7 已继续升级为完整组织诊断闭环：AI 诊断规则生成、Employee Voice Agent 员工声音智能体、组织诊断看板、组织诊断报告和 30/60/90 天行动计划。前端已加入全局 sticky 顶部导航，方便在组织咨询首页、HR 诊断假设、AI 人才模型、360评审 Agent、管理员控制台、员工反馈、组织诊断看板和报告生成之间切换。
 
+最新版本新增 **专业诊断辩论室 / Diagnosis Debate Panel**：在组织诊断看板中模拟 OD 组织发展、人才发展、工业与组织心理学、系统思维、People Analytics、AI 转型与人机协作、组织治理与风控等专业流派，对组织诊断结论进行交叉审议，帮助 HR 避免单一归因。
+
 ## 360 Agent 定位
 
 360 Review Intelligence Agent 面向 HR、HRBP 和组织发展顾问，覆盖：
@@ -30,6 +32,7 @@ Phase 3.4-3.7 已继续升级为完整组织诊断闭环：AI 诊断规则生成
 - **诊断规则**：基于诊断假设和人才模型生成评分差异、反馈主题和 AI 转型信号的解释规则。
 - **Employee Voice Agent**：升级员工反馈池，支持反馈筛选、AI 总结和员工声音主题聚类。
 - **组织诊断看板**：组合项目完成率、AI 人才维度表现、360 差异、员工反馈主题、组织风险、高潜人才信号和 AI 转型卡点。
+- **专业诊断辩论室**：在组织诊断看板中进行多专业流派交叉审议，输出共识、分歧、推荐诊断、补充证据和建议行动。
 - **报告生成**：生成组织诊断报告、AI 转型成熟度报告和 30/60/90 天行动计划，默认草稿，需要 HR 确认。
 
 ## 账号与角色
@@ -46,7 +49,7 @@ Phase 3.4-3.7 已继续升级为完整组织诊断闭环：AI 诊断规则生成
 管理员登录后建议按以下顺序使用：
 
 1. 进入 **HR诊断假设**，填写诊断对象、诊断目的、公司阶段、HR 核心判断、想识别的人才、重点关注问题、风控边界和期望输出。
-2. 点击 **AI 提炼诊断假设**。没有 `OPENAI_API_KEY` 时会返回 fallback mock 假设，至少包含中层目标拆解、AI 转型、跨部门协作和 AI-native 高潜人才四类假设。
+2. 点击 **AI 提炼诊断假设**。没有配置模型调用凭证时会返回 fallback mock 假设，至少包含中层目标拆解、AI 转型、跨部门协作和 AI-native 高潜人才四类假设。
 3. HR 编辑 AI 假设后点击 **确认诊断假设**。
 4. 进入 **AI人才模型**，选择已确认诊断假设和模型模板，点击 **AI 生成人才模型**。没有 AI Key 时会返回 mock `AI-native Manager Capability Model`。
 5. HR 编辑模型名称、说明、维度、低/中/高行为标准、样例题目和权重，保存并确认模型。
@@ -60,8 +63,33 @@ Phase 3.4-3.7 已继续升级为完整组织诊断闭环：AI 诊断规则生成
 2. 进入 **员工反馈**，管理员可筛选反馈、逐条 AI 总结，也可点击 **AI 反馈主题聚类** 生成 Employee Voice 主题。
 3. 进入 **组织诊断看板**，查看项目完成率、模型维度、360 差异、员工反馈主题、组织风险、高潜人才线索和 AI 转型卡点。
 4. 点击 **生成组织风险**，系统基于诊断假设、人才模型、诊断规则、员工反馈聚类和 360 差异生成风险解释。
-5. 进入 **报告生成**，生成组织诊断报告、AI 转型成熟度报告或 30/60/90 天行动计划。
-6. HR 编辑报告草稿后点击 **HR 确认报告**。报告中的 AI 结论仍需结合业务事实人工确认。
+5. 在 **组织诊断看板 / 专业诊断辩论室** 中输入诊断主题，生成多专业视角的交叉审议结果。无模型调用凭证时会返回 fallback mock。
+6. 进入 **报告生成**，生成组织诊断报告、AI 转型成熟度报告或 30/60/90 天行动计划。报告页可引用最近一次专业诊断辩论摘要。
+7. HR 编辑报告草稿后点击 **HR 确认报告**。报告中的 AI 结论仍需结合业务事实人工确认。
+
+## 专业诊断辩论室
+
+专业诊断辩论室不是员工论坛，也不是聊天区。它是组织诊断看板中的审议模块，用于让 AI 模拟多个专业流派对同一组织问题进行交叉分析、反驳和补充证据。
+
+支持的专业视角：
+
+- OD 组织发展：组织结构、权责边界、角色关系、协作机制、决策流程。
+- 人才发展：员工能力、管理者能力、学习发展、人才梯队和 AI 时代人才标准。
+- 工业与组织心理学：动机、心理安全感、信任、公平感、反馈质量和员工体验。
+- 系统思维：上下游系统、流程断点、目标传导、局部优化和整体低效。
+- People Analytics：样本量、评分差异、群体偏差、不确定性和置信度。
+- AI 转型与人机协作：AI 工作流、团队使用规范、人机任务边界和流程重构。
+- 组织治理与风控：隐私、公平、匿名保护、人工复核和用途边界。
+
+输出内容包括：
+
+- 辩论主题与背景摘要
+- 多专业视角卡片
+- 共识、分歧和推荐诊断
+- 置信度、下一步证据和建议行动
+- 风控提示
+
+该模块仅用于组织发展和 HR 决策辅助，不作为自动人事决策依据。
 
 后端根路径也提供运行状态：
 
@@ -79,7 +107,7 @@ hr-ai-consulting/
       ai.py             # OpenAI-compatible 调用与 JSON 解析
       database.py       # SQLite 路径、建表与轻量迁移
       main.py           # 认证、360 API、员工任务、反馈、分析、报告与审计接口
-      security.py       # 密码 hash 与 token 生成
+      security.py       # 登录口令摘要与会话值生成
     requirements.txt
     hr360.sqlite3       # 本地运行后自动生成
   src/
@@ -201,6 +229,10 @@ POST /api/diagnosis/risks/generate
 GET  /api/diagnosis/risks
 PUT  /api/diagnosis/risks/{risk_id}
 
+POST /api/diagnosis/debates/generate
+GET  /api/diagnosis/debates
+GET  /api/diagnosis/debates/{id}
+
 POST /api/diagnosis/reports/generate
 GET  /api/diagnosis/reports
 GET  /api/diagnosis/reports/{id}
@@ -219,7 +251,7 @@ PUT  /api/action-plans/{id}
 GET  /api/admin/users
 POST /api/admin/users
 PUT  /api/admin/users/{user_id}
-POST /api/admin/users/{user_id}/reset-password
+POST 管理员重置登录口令接口，具体路径见 /docs
 GET  /api/admin/dashboard
 GET  /api/admin/projects/{project_id}/progress
 GET  /api/admin/projects/{project_id}/responses
@@ -273,6 +305,7 @@ hr-ai-consulting/backend/hr360.sqlite3
 - `organization_risks`
 - `diagnosis_reports`
 - `action_plans`
+- `diagnosis_debates`
 - `employees`
 - `competencies`
 - `questions`
@@ -286,23 +319,11 @@ hr-ai-consulting/backend/hr360.sqlite3
 
 ## AI 配置
 
-AI 接口兼容 OpenAI Chat Completions，通过环境变量读取：
+AI 接口兼容 OpenAI Chat Completions。模型调用凭证请通过本地环境变量或页面运行时配置提供，生产环境不要写入代码仓库。
 
-```bash
-OPENAI_API_KEY=...
-OPENAI_BASE_URL=https://api.openai.com/v1
-OPENAI_MODEL=gpt-4o-mini
-```
+也可以在页面「项目创建」里的 AI 配置表单保存模型调用凭证、服务地址和模型名称。
 
-也可以在页面「项目创建」里的 AI 配置表单保存：
-
-```text
-api_key
-base_url
-model
-```
-
-如果没有配置 `OPENAI_API_KEY`，系统不会报错，会自动使用 fallback mock 结果，确保以下功能完整跑通：
+如果没有配置模型调用凭证，系统不会报错，会自动使用 fallback mock 结果，确保以下功能完整跑通：
 
 - 生成 360 问卷
 - 提炼 HR 诊断假设
@@ -311,6 +332,7 @@ model
 - 生成 AI 诊断规则
 - 聚类 Employee Voice 员工反馈主题
 - 生成组织风险
+- 生成专业诊断辩论
 - 生成组织诊断报告
 - 生成 30/60/90 天行动计划
 - 检查和优化问卷题目
